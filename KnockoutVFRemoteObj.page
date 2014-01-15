@@ -1,0 +1,228 @@
+<apex:page sidebar="false" showheader="false" docType="html-5.0">
+  <!-- <apex:sectionHeader title="Visualforce + Knockout.js" /> -->
+  <head>
+    <apex:includeScript value="https://cdnjs.cloudflare.com/ajax/libs/knockout/2.1.0/knockout-min.js" />
+    <!--Include Stylsheets for the Mobile look and feel -->
+    <apex:stylesheet value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'Mobile-Design-Templates-master/common/css/app.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'Mobile-Design-Templates-master/common/js/jQuery2.0.2.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'Mobile-Design-Templates-master/common/js/jquery.touchwipe.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'Mobile-Design-Templates-master/common/js/main.min.js')}"/>
+    <apex:includeScript value="/canvas/sdk/js/publisher.js"/>
+    
+    <style>
+      /* default S1 color styles */
+      .list-view-header, .data-capture-buttons a {
+        background: -webkit-linear-gradient(#2a93d5,#107abb);
+        background: linear-gradient(#2a93d5,#107abb);
+        box-shadow: 0 1px 3px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.21);
+        color: white;
+        font-weight: bold;
+      }
+      
+      .app-content{ padding-top: 0px !important; }
+    </style>
+  </head>
+  
+    <apex:remoteObjects >
+      <!-- Define the Shipment object for creating new shipments -->
+      <apex:remoteObjectModel name="sreadyprerel__Shipment__c" jsShorthand="Shipment" fields="Id, Name">
+          <apex:remoteObjectField name="sreadyprerel__Status__c" jsShorthand="Status" />
+          <apex:remoteObjectField name="sreadyprerel__Received_At__c" jsShorthand="ReceivedAt" />
+          <apex:remoteObjectField name="sreadyprerel__Merchandise__c" jsShorthand="MerchandiseObj" />
+      </apex:remoteObjectModel>
+      <!-- Define merchandise object for list of available merchandise -->
+      <apex:remoteObjectModel name="sreadyprerel__Merchandise__c" jsShorthand="Merchandise" fields="Id">
+          <apex:remoteObjectField name="Name" />
+          <apex:remoteObjectField name="sreadyprerel__Active__c" jsShorthand="active" />
+          <apex:remoteObjectField name="sreadyprerel__ImgURL__c" jsShorthand="imgURL" />
+          <apex:remoteObjectField name="sreadyprerel__Description__c" jsShorthand="Description" />
+          <apex:remoteObjectField name="sreadyprerel__Quantity__c" jsShorthand="Quantity" />
+      </apex:remoteObjectModel>
+  </apex:remoteObjects>
+  
+  <div class="app-content" id="startPage" data-bind="ifnot: selectedMerchandise">
+    <div class="list-view-header">Merchandise</div>
+    <ul class="list-view with-swipe left-thumbs right-one-icons" data-bind="foreach: merchandiseArray">
+      <li>
+        <div class="thumbs">
+          <img class="thumb thumb-3" data-bind="attr: { src: imgURL__c }" />
+        </div>
+        <a href="#" class="content" data-bind="click: toggleSelect">
+          <h2 data-bind="text: Name"></h2>
+          <p data-bind="text: Description__c"></p>
+          <div class="list-view-icons">
+            <span class="icon-right-arrow">&nbsp;</span>
+          </div>
+        </a>
+      </li>
+    </ul>
+  </div>
+    
+  <div class="result-page" id="resultPage" data-bind="if: selectedMerchandise">
+    <div class="list-view-header">Shipment Information</div>
+    <div data-bind="with: selectedMerchandise">
+      <section class="border-bottom">
+        <div class="content">
+          <h3>Merchandise Name</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <h1 data-bind="text: Name"></h1>
+              <h2 data-bind="text: Id" id="input_merchId" style="display:none;"></h2>
+            </div>
+          </div>
+        </div>
+      </section>
+                    
+      <section class="border-bottom">
+        <div class="content">
+          <h3>Quantity</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <input type="number" id="input_quantity" data-bind="value: Quantity__c" />
+            </div>
+          </div>
+        </div>
+      </section>
+                    
+      <section class="border-bottom">
+        <div class="content">
+          <h3>Status</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <select id="input_status" data-bind="options: Shipment.availableStatus, value: Shipment.Status__c"></select>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="border-bottom">
+        <div class="content">
+          <h3>Received At</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <input type="date" id="input_receivedAt" data-bind="value: Shipment.Received_At__c" />
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="data-capture-buttons one-buttons">
+        <div class="content">
+          <section class="data-capture-buttons one-buttons">
+            <a href="#" data-bind="click: toggleSelect" >Back</a>
+          </section>
+        </div>
+      </section>
+    </div> 
+  </div>
+
+  <script>
+    
+  var ViewModel = {
+    merchandiseArray: ko.observableArray([]),
+    selectedMerchandise: ko.observable(null)
+  };
+   
+  function Shipment(json) {
+    json = json || {};
+    this.Id = json.Id || null;
+    this.Status__c = json.Status__c || null;
+    this.Received_At__c = json.Received_At__c || null;
+    this.availableStatus = ko.observableArray(['-- None --', 'Arrived', 'Checked', 'Destroyed in Transit']);
+  };
+  
+  function Merchandise(json) {
+    console.log(JSON.stringify(json, null, 4));
+    this.Id = json.Id || null;
+    this.Name = json.Name || '';
+    this.imgURL__c = json.imgURL || '';
+    this.Description__c = json.Description || '';
+    this.Quantity__c = ko.observable(this.Quantity || 0);
+    
+    this.Shipment = new Shipment();
+    
+    this.isSelected = ko.computed(function() {
+      return ViewModel.selectedMerchandise() !== null &&
+               ViewModel.selectedMerchandise().Id === this.Id;
+    }, this);
+      
+    this.toggleSelect = function(merchandise) {
+      if (ViewModel.selectedMerchandise()) {
+        ViewModel.selectedMerchandise(null);
+        $("#startPage").show();
+        $("#resultPage").hide();
+        
+      } else {
+        ViewModel.selectedMerchandise(merchandise);
+        //This method will activate the publish button so the form can be submitted 
+        Sfdc.canvas.publisher.publish({name: "publisher.setValidForSubmit", payload:"true"});
+        
+        $("#startPage").hide();
+        $("#resultPage").show();
+      }
+    };
+  }
+  
+  ko.applyBindings(ViewModel);
+  
+  getMerchandise = function() {
+      var merch = new SObjectModel.Merchandise();
+      
+      merch.retrieve({ 
+              limit:10, 
+              where : {
+                  active: {
+                      eq: true
+                  }
+              }
+          }, 
+          function(err, recs) {
+            var data = [];
+            recs.forEach(function(rec) {
+                var newData = {};
+                for (var key in rec._fields) {
+                    var fld = rec._fields[key];
+                    if (fld.shorthand !== "") {
+                        newData[fld.shorthand] = rec.get(fld.shorthand);
+                    } else {
+                        newData[key] = rec.get(key);
+                    }
+                };
+                data.push(newData);
+            });
+            ViewModel.merchandiseArray(ko.utils.arrayMap(data, function(merchandise) {
+                console.log(JSON.stringify(merchandise, null, 4));
+                return new Merchandise(merchandise);
+            }));
+            
+            Sfdc.canvas.publisher.subscribe({
+                name: "publisher.post", 
+                onData:function(e) {
+                    // This subscribe fires when the user hits 'Submit' in the publisher
+                    // Need to create a new shipment item
+                    var shipment = new SObjectModel.Shipment();
+                    shipment.set("MerchandiseObj", $('#input_merchId').text());
+                    shipment.set("Quantity", $('#input_quantity').val());
+                    shipment.set("Status", $('#input_status').val());
+                    shipment.set("Receivedat", $('#input_receivedAt').val());
+                    shipment.create(function(err) {
+                        if (err) alert(err);
+                        else console.log(acc.get('Id'));
+                    });
+                }
+            });    
+            
+      });
+      
+  };
+  
+  getMerchandise();
+
+  window.name = "prerel";
+
+</script>
+</apex:page>
